@@ -179,6 +179,10 @@ function debounce (delay, callback, options) {
 ;// CONCATENATED MODULE: ./background.js
 
 
+let _tabsData = {};
+let _deviceName = '';
+let _sessions = (/* unused pure expression or super */ null && ([]));
+
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -187,8 +191,11 @@ function _btoa(plainText) {
 }
 
 function _atob(base64String) {
-  return textDecoder.decode(atob(base64String).split('').map(c => c.charCodeAt(0)));
+  return textDecoder.decode(Uint8Array.from(atob(base64String).split('').map(c => c.charCodeAt(0))));
 }
+
+globalThis._btoa = _btoa;
+globalThis._atob = _atob;
 
 async function getTabsStatus() {
   const groups = {};
@@ -245,15 +252,41 @@ async function getCurrentDeviceName() {
   return await chrome.storage.local.get('deviceName')?.deviceName || await chrome.instanceID.getID();
 }
 
+async function loadTabsDataFromStorage(firstChunk) {
+  if (firstChunk === undefined) {
+    firstChunk = (await chrome.storage.sync.get('cest_tabs'))?.cest_tabs;
+  }
+  if (firstChunk) {
+    const chunkNum = parseInt(firstChunk.match(/^\d+/));
+    const otherChunks = await chrome.storage.sync.get(new Array(chunkNum).fill(undefined).map((c, i) => `cest_tabs${i}`));
+    _tabsData = {
+      cest_tabs: firstChunk,
+      ...otherChunks
+    };
+    try {
+      const json = firstChunk.slice(String(chunkNum).length + 1) + Object.values(otherChunks).join('');
+      const data = JSON.parse(_atob(json));
+      console.log(data);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+}
+
+async function init() {
+  await loadTabsDataFromStorage();
+  _deviceName = await getCurrentDeviceName();
+  _sessions = await chrome.sessions.getDevices();
+}
+
 const updateMyTabs = debounce(
   2000,
   async function updateMyTabs() {
-    let deviceName = await chrome.storage.local.get('deviceName')?.deviceName || await chrome.instanceID.getID();
+    let deviceName = (await chrome.storage.local.get('deviceName'))?.deviceName || await chrome.instanceID.getID();
     const windows = { [deviceName]: await getTabsStatus() };
     const raw = _btoa(JSON.stringify(windows));
     const firstChunk = raw.slice(0, 8178);
     const otherChunks = raw.slice(8178).split(/(.{8179})/g).filter(a => a);
-    console.log(windows, raw.length, otherChunks.length+1);
     await chrome.storage.sync.set({
       cest_tabs: otherChunks.length + ',' + firstChunk,
       ...Object.fromEntries(otherChunks.map((chunk, i) => [`cest_tabs${i}`, chunk]))
@@ -261,25 +294,14 @@ const updateMyTabs = debounce(
   }
 );
 
-chrome.storage.sync.onChanged.addListener(async (e) => {
-  console.log(e);
-  const { cest_tabs: { newValue: firstChunk } = {} } = e;
-  if (firstChunk) {
-    const chunkNum = parseInt(firstChunk.match(/^\d+/));
-    const otherChunks = await chrome.storage.sync.get(new Array(chunkNum).fill(undefined).map((c, i) => `cest_tabs${i}`));
-
-    try {
-      const json = firstChunk.slice(String(chunkNum).length) + Object.values(otherChunks).join('');
-      const data = JSON.parse(_atob(json));
-      console.log(data);
-    } catch (e) {
-      console.log(e);
-    }
+chrome.storage.sync.onChanged.addListener(e => {
+  if (Object.keys(e).join(',').includes('cest_tabs')) {
+    loadTabsDataFromStorage();
   }
 });
 
-chrome.storage.local.onChanged.addListener(({ deviceName }) => {
-  if (deviceName) {
+chrome.storage.local.onChanged.addListener(({ deviceName: { newValue } }) => {
+  if (newValue) {
     updateMyTabs();
   }
 });
@@ -303,6 +325,6 @@ chrome.tabGroups?.onMoved?.addListener(updateMyTabs);
 chrome.tabGroups?.onRemoved?.addListener(updateMyTabs);
 chrome.tabGroups?.onUpdated?.addListener(updateMyTabs);
 
-chrome.sessions.getDevices().then(console.log);
+init();
 /******/ })()
 ;
