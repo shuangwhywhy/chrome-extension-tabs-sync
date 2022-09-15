@@ -2,9 +2,14 @@
 // the selection
 function handleButtonClick(event) {
   // Mark the button as selected
-  let deviceName = document.getElementById('device-name').value;
-  chrome.storage.local.set({ deviceName });
-  console.log(deviceName);
+  let deviceName = document.getElementById('device-name').value.trim();
+  if (deviceName) {
+    chrome.storage.local.set({ deviceName });
+    console.log('New Device Name: ', deviceName);
+  }
+  else {
+    alert('Device name should not be empty');
+  }
 }
 
 document.querySelector('#buttonDiv').addEventListener('click', handleButtonClick);

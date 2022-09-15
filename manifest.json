@@ -10,7 +10,8 @@
     "storage",
     "tabs",
     "tabGroups",
-    "gcm"
+    "gcm",
+    "sessions"
   ],
   "action": {
     "default_popup": "popup.html",

@@ -1,8 +1,14 @@
 {
+  "sideEffects": false,
   "dependencies": {
+    "crypto-js": "^4.1.1",
     "throttle-debounce": "^5.0.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.19.1",
+    "@babel/preset-env": "^7.19.1",
+    "babel-loader": "^8.2.5",
+    "core-js": "^3.25.1",
     "webpack": "^5.74.0"
   },
   "scripts": {
