@@ -1,0 +1,20 @@
+input {
+  width: 300px;
+  height: 30px;
+}
+
+button {
+  height: 30px;
+  padding: 0px 10px;
+  box-sizing: border-box;
+  min-width: 200px;
+  outline: none;
+  margin: 10px 0px;
+  border: none;
+  border-radius: 2px;
+  background: #eee;
+}
+
+button:active {
+  background: #ddd;
+}
